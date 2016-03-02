@@ -25,17 +25,25 @@ class ClangSingleMessage:
     _srcMark = ""
 
 
-    def __init__(self):
+    def __init__(self, msg = []):
+        self.parseMsg(msg)
         pass
 
     def parseMsg(self, msg):
         # Check how the message was passed - allowed are plain string or list of strings(in wich
         # case each element of the list is considered one line of the message)
         if (isinstance(msg, str)):
+            # check if string is empty, finish if so
+            if (msg == ""):
+                return
+
             # split the string into lines
             lines = text.split('\n')
 
         elif (isinstance(msg, list)):
+            # check if list is empty, finish if so
+            if (msg == []):
+                return
             # check if all the elements of the list are strings
             for elem in msg:
                 if (not isinstance(elem, str)):
@@ -51,8 +59,18 @@ class ClangSingleMessage:
         # that can be done with a simple regex
         lstart = re.compile(r"^.+\:\d+\:\d+\:")
         if (lstart.match(lines[0]) != None):
-            print ("Matched!")
-        
+            # matched the first line - this must be a valid clang-style message
+            # get info from the first line - type, line no, col no, error text...
+            fldata = lines[0].split(':')
+            self._filename = fldata[0]
+            self._line = int(fldata[1])
+            self._col = int(fldata[2])
+            self._type = fldata[3][1:]      # skip initial space
+            self._text = fldata[4][1:]      # skip initial space
+            self._srcLine = lines[1]
+            self._srcMark = lines[2]
+            # TODO: currently, the last line that might contain a hint is being dropped - use this
+            # line!
 
 
 
@@ -64,11 +82,11 @@ class ClangMessages:
             raise TypeError("The msgText parameter must be a string containing the compiler messages!")
 
         # initialize empty messages dictionary if no text is given
-        if (text == ""):
+        if (msgText == ""):
             self.messages = {"note":[], "warning":[], "error":[]} 
-
-        # if a proper text was given, parse it
-        parseTextMsgs(msgText)
+        else:
+            # if a proper text was given, parse it
+            self.parseTextMsgs(msgText)
 
     def parseTextMsgs(self, text):
         # split the string into lines
@@ -95,6 +113,7 @@ class ClangMessages:
         # The messages are then stored according to their type in the messages dictionary
         for msg in msgs:
             pMsg = ClangSingleMessage(msg)
+            self.messages[pMsg._type] = self.messages[pMsg._type] + [pMsg]
 
             
 
